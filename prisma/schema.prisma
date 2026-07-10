@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CompanyStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PortalStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketSeverity {
+  UNSET
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TicketCategory {
+  CHECK_IN
+  CHECK_OUT
+  SCRIPT_DOWN
+  UX
+  DASHBOARD
+  SUBSCRIPTION
+  OTHER
+  UNSET
+}
+
+enum UserRole {
+  ADMIN
+  DEVELOPER
+}
+
+enum NotificationType {
+  ASSIGNMENT
+  RESOLUTION
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
+enum ActorType {
+  USER
+  SYSTEM
+}
+
+model Company {
+  id                  String           @id @default(uuid())
+  name                String
+  slug                String           @unique
+  primaryContactEmail String?
+  status              CompanyStatus    @default(ACTIVE)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  portals             Portal[]
+
+  @@map("companies")
+}
+
+model Portal {
+  id               String       @id @default(uuid())
+  slug             String       @unique
+  companyName      String
+  clientAdminEmail String
+  description      String?
+  companyId        String?
+  status           PortalStatus @default(ACTIVE)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  company          Company?     @relation(fields: [companyId], references: [id])
+  apiKeys          ApiKey[]
+  tickets          Ticket[]
+
+  @@index([companyId])
+  @@map("portals")
+}
+
+model ApiKey {
+  id         String   @id @default(uuid())
+  portalId   String
+  keyHash    String
+  keyPrefix  String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime?
+
+  portal     Portal   @relation(fields: [portalId], references: [id])
+
+  @@index([portalId, isActive])
+  @@map("api_keys")
+}
+
+model Ticket {
+  id             String         @id @default(uuid())
+  referenceId    String         @unique
+  portalId       String
+  status         TicketStatus   @default(OPEN)
+  severity       TicketSeverity @default(UNSET)
+  category       TicketCategory @default(UNSET)
+  tags           String[]       @default([])
+  description    String
+  contactName    String?
+  reporterEmail  String?
+  browserInfo    Json?
+  screenshotUrls String[]       @default([])
+  resolutionNote String?
+  resolvedAt     DateTime?
+  closedAt       DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  portal         Portal          @relation(fields: [portalId], references: [id])
+  notes          TicketNote[]
+  assignments    Assignment[]
+  notifications  NotificationLog[]
+  auditLogs      AuditLog[]
+
+  @@index([status, createdAt])
+  @@index([portalId, createdAt])
+  @@map("tickets")
+}
+
+model TicketNote {
+  id        String   @id @default(uuid())
+  ticketId  String
+  authorId  String
+  content   String
+  isInternal Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_notes")
+}
+
+model Assignment {
+  id         String   @id @default(uuid())
+  ticketId   String
+  assigneeId String
+  assignedBy String
+  dueDate    DateTime
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  ticket     Ticket   @relation(fields: [ticketId], references: [id])
+  assignee   User     @relation("AssignedTo", fields: [assigneeId], references: [id])
+
+  @@index([ticketId, isActive])
+  @@index([assigneeId, isActive])
+  @@map("assignments")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(DEVELOPER)
+  isActive     Boolean  @default(true)
+  resetToken   String?
+  resetTokenAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  notes          TicketNote[]
+  assignments    Assignment[] @relation("AssignedTo")
+  invitationsSent UserInvitation[] @relation("InvitedBy")
+
+  @@map("users")
+}
+
+model UserInvitation {
+  id          String    @id @default(uuid())
+  name        String
+  email       String
+  role        UserRole  @default(DEVELOPER)
+  tokenHash   String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  invitedById String
+  createdAt   DateTime  @default(now())
+
+  invitedBy   User      @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@index([email, acceptedAt])
+  @@index([tokenHash])
+  @@map("user_invitations")
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  entityType  String
+  entityId    String
+  ticketId    String?
+  action      String
+  actorId     String?
+  actorType   ActorType @default(USER)
+  beforeState Json?
+  afterState  Json?
+  createdAt   DateTime  @default(now())
+
+  ticket      Ticket?   @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model NotificationLog {
+  id               String             @id @default(uuid())
+  ticketId         String
+  recipientEmail   String
+  notificationType NotificationType
+  status           NotificationStatus
+  sentAt           DateTime           @default(now())
+  errorMessage     String?
+
+  ticket           Ticket             @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId, sentAt])
+  @@map("notification_logs")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isRevoked Boolean  @default(false)
+
+  @@index([userId, isRevoked])
+  @@map("refresh_tokens")
+}
+
