@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class InviteUserDto {
@@ -45,4 +45,13 @@ export class ChangePasswordDto {
   @IsString()
   @MinLength(8)
   newPassword!: string;
+}
+
+export class UpdateUserStatusDto {
+  @ApiProperty({
+    description: 'false removes the member from the team and blocks login',
+    example: false,
+  })
+  @IsBoolean()
+  isActive!: boolean;
 }
