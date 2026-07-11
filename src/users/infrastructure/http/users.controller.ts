@@ -18,11 +18,13 @@ import {
   GetMeUseCase,
   UpdateMeUseCase,
 } from '@users/application/use-cases/profile/profile.use-cases';
+import { UpdateUserStatusUseCase } from '@users/application/use-cases/update-user-status/update-user-status.use-case';
 import {
   AcceptInviteDto,
   ChangePasswordDto,
   InviteUserDto,
   UpdateMeDto,
+  UpdateUserStatusDto,
 } from './dto/invite-user.dto';
 
 @ApiTags('Team Members')
@@ -35,6 +37,7 @@ export class UsersController {
     private readonly updateMe: UpdateMeUseCase,
     private readonly changePassword: ChangeMyPasswordUseCase,
     private readonly getMemberDetail: GetTeamMemberDetailUseCase,
+    private readonly updateUserStatus: UpdateUserStatusUseCase,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -117,6 +120,21 @@ export class UsersController {
   @ApiOperation({ summary: 'Team member profile with assignment history' })
   detail(@Param('id') id: string) {
     return this.getMemberDetail.execute(id);
+  }
+
+  @Patch(':id/status')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Activate or deactivate a team member (deactivated users cannot log in)',
+  })
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserStatusDto,
+    @Req() req: { user: { id: string } },
+  ) {
+    return this.updateUserStatus.execute(req.user.id, id, dto.isActive);
   }
 }
 
