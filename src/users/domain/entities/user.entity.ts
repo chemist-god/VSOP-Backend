@@ -70,6 +70,11 @@ export class User extends AggregateRoot<UserProps> {
     this.props.updatedAt = new Date();
   }
 
+  activate(): void {
+    this.props.isActive = true;
+    this.props.updatedAt = new Date();
+  }
+
   setResetToken(token: string | null): void {
     this.props.resetToken = token;
     this.props.resetTokenAt = token ? new Date() : null;
