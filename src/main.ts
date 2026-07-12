@@ -26,7 +26,7 @@ async function bootstrap(): Promise<void> {
   );
   app.useGlobalFilters(new DomainExceptionFilter());
 
-  if (configService.get<string>('app.nodeEnv') !== 'production') {
+  if (configService.get<boolean>('app.enableSwagger')) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('VSOP API')
       .setDescription('VeriTrack Support Operations Platform API')
