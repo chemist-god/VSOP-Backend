@@ -59,6 +59,17 @@ enum NotificationStatus {
   FAILED
 }
 
+enum TicketSource {
+  INTAKE
+  INTERNAL
+}
+
+enum InAppNotificationType {
+  TICKET_CREATED
+  TICKET_ASSIGNED
+  TICKET_RESOLVED
+}
+
 enum ActorType {
   USER
   SYSTEM
@@ -115,7 +126,9 @@ model ApiKey {
 model Ticket {
   id             String         @id @default(uuid())
   referenceId    String         @unique
-  portalId       String
+  portalId       String?
+  source         TicketSource   @default(INTAKE)
+  createdById    String?
   status         TicketStatus   @default(OPEN)
   severity       TicketSeverity @default(UNSET)
   category       TicketCategory @default(UNSET)
@@ -131,15 +144,37 @@ model Ticket {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  portal         Portal          @relation(fields: [portalId], references: [id])
-  notes          TicketNote[]
-  assignments    Assignment[]
-  notifications  NotificationLog[]
-  auditLogs      AuditLog[]
+  portal              Portal?              @relation(fields: [portalId], references: [id])
+  createdBy           User?                @relation("TicketCreatedBy", fields: [createdById], references: [id])
+  notes               TicketNote[]
+  assignments         Assignment[]
+  notifications       NotificationLog[]
+  auditLogs           AuditLog[]
+  inAppNotifications  InAppNotification[]
 
   @@index([status, createdAt])
   @@index([portalId, createdAt])
+  @@index([source, createdAt])
+  @@index([createdById])
   @@map("tickets")
+}
+
+model InAppNotification {
+  id        String                 @id @default(uuid())
+  userId    String
+  type      InAppNotificationType
+  title     String
+  body      String
+  ticketId  String?
+  readAt    DateTime?
+  createdAt DateTime               @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("in_app_notifications")
 }
 
 model TicketNote {
@@ -186,9 +221,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  notes          TicketNote[]
-  assignments    Assignment[] @relation("AssignedTo")
-  invitationsSent UserInvitation[] @relation("InvitedBy")
+  notes               TicketNote[]
+  assignments         Assignment[]        @relation("AssignedTo")
+  invitationsSent     UserInvitation[]    @relation("InvitedBy")
+  ticketsCreated      Ticket[]            @relation("TicketCreatedBy")
+  inAppNotifications  InAppNotification[]
 
   @@map("users")
 }
