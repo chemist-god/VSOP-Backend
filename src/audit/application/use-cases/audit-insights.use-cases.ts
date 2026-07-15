@@ -77,8 +77,10 @@ export class GetInsightsUseCase {
     const portalIds = byPortal
       .sort((a, b) => b._count._all - a._count._all)
       .slice(0, 8)
-      .map((row) => row.portalId);
+      .map((row) => row.portalId)
+      .filter((id): id is string => Boolean(id));
     const topPortals = byPortal
+      .filter((row) => row.portalId != null)
       .sort((a, b) => b._count._all - a._count._all)
       .slice(0, 8);
     const portals = portalIds.length
@@ -138,9 +140,9 @@ export class GetInsightsUseCase {
         count: row._count._all,
       })),
       byPortal: topPortals.map((row) => ({
-        portalId: row.portalId,
-        companyName: portalsById[row.portalId]?.companyName ?? 'Unknown',
-        slug: portalsById[row.portalId]?.slug ?? 'unknown',
+        portalId: row.portalId as string,
+        companyName: portalsById[row.portalId as string]?.companyName ?? 'Unknown',
+        slug: portalsById[row.portalId as string]?.slug ?? 'unknown',
         count: row._count._all,
       })),
       trend: [...trendMap.entries()].map(([date, counts]) => ({
