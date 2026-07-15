@@ -1,11 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { TicketCategory, TicketSeverity, TicketStatus } from '@prisma/client';
+import { TicketCategory, TicketSeverity, TicketSource, TicketStatus } from '@prisma/client';
 import { TICKET_REPOSITORY_PORT, TicketRepositoryPort } from '@tickets/application/ports/ticket-repository.port';
 import { ID_GENERATOR_PORT, IdGeneratorPort } from '@shared/application/ports/id-generator.port';
 import { CLOCK_PORT, ClockPort } from '@shared/application/ports/clock.port';
 import { DOMAIN_EVENT_PUBLISHER_PORT, DomainEventPublisherPort } from '@shared/application/ports/domain-event-publisher.port';
 import { Ticket } from '@tickets/domain/entities/ticket.entity';
-import { TicketCreatedEvent } from '@tickets/domain/events/ticket-created.event';
 import { SubmitTicketCommand } from './submit-ticket.command';
 
 export interface SubmitTicketResult {
@@ -37,6 +36,7 @@ export class SubmitTicketUseCase {
     const ticket = Ticket.create(
       {
         portalId: command.portalId,
+        source: TicketSource.INTAKE,
         referenceId,
         status: TicketStatus.OPEN,
         severity: TicketSeverity.UNSET,
