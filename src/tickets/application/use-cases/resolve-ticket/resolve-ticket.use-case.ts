@@ -17,9 +17,11 @@ export class ResolveTicketUseCase {
     const ticket = await this.ticketRepo.findById(command.ticketId);
     if (!ticket) throw new TicketNotFoundError(command.ticketId);
 
-    const portal = await this.portalRepo.findById(ticket.portalId);
+    const portal = ticket.portalId
+      ? await this.portalRepo.findById(ticket.portalId)
+      : null;
     const clientEmail = portal?.clientAdminEmail ?? '';
-    const portalName = portal?.companyName ?? 'Portal';
+    const portalName = portal?.companyName ?? 'Internal';
 
     ticket.resolve(command.resolutionNote, command.actorId, clientEmail, portalName);
     await this.ticketRepo.save(ticket);
