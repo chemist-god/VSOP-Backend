@@ -10,6 +10,7 @@ import { DOMAIN_EVENT_PUBLISHER_PORT, DomainEventPublisherPort } from '@shared/a
 import { ID_GENERATOR_PORT, IdGeneratorPort } from '@shared/application/ports/id-generator.port';
 import { TicketNotFoundError } from '@tickets/domain/errors/ticket-not-found.error';
 import { UserNotFoundError } from '@users/domain/errors/user-not-found.error';
+import { TicketAssignedEvent } from '@tickets/domain/events/ticket-assigned.event';
 import { AssignTicketInput } from './assign-ticket.command';
 
 @Injectable()
@@ -51,14 +52,29 @@ export class AssignTicketUseCase {
       ticket.clearDomainEvents();
     }
 
-    const portal = await this.portalRepo.findById(ticket.portalId);
-    const frontendUrl = this.config.get<string[]>('security.corsOrigins')?.[0] ?? 'http://localhost:3000';
+    this.eventPublisher.publishAll([
+      new TicketAssignedEvent(
+        ticket.id,
+        assignmentId,
+        input.assigneeId,
+        input.assignedBy,
+        ticket.referenceId,
+        ticket.description,
+        input.dueDate,
+      ),
+    ]);
+
+    const portal = ticket.portalId
+      ? await this.portalRepo.findById(ticket.portalId)
+      : null;
+    const frontendUrl =
+      this.config.get<string[]>('security.corsOrigins')?.[0] ?? 'http://localhost:3000';
 
     await this.notificationPort.sendAssignmentNotification({
       assigneeName: assignee.name,
       assigneeEmail: assignee.email.value,
       ticketReferenceId: ticket.referenceId,
-      portalName: portal?.companyName ?? 'Portal',
+      portalName: portal?.companyName ?? 'Internal',
       issueDescription: ticket.description,
       dueDate: input.dueDate,
       dashboardUrl: `${frontendUrl}/dashboard/tickets/${ticket.id}`,
