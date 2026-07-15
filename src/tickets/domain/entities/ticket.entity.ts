@@ -1,5 +1,10 @@
 import { AggregateRoot } from '@shared/domain/aggregate-root.base';
-import { TicketCategory, TicketSeverity, TicketStatus } from '@prisma/client';
+import {
+  TicketCategory,
+  TicketSeverity,
+  TicketSource,
+  TicketStatus,
+} from '@prisma/client';
 import { InvalidTicketTransitionError } from '../errors/invalid-ticket-transition.error';
 import { TicketStatusChangedEvent } from '../events/ticket-status-changed.event';
 import { TicketResolvedEvent } from '../events/ticket-resolved.event';
@@ -14,7 +19,9 @@ const ALLOWED_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
 };
 
 interface TicketProps {
-  portalId: string;
+  portalId?: string | null;
+  source: TicketSource;
+  createdById?: string | null;
   referenceId: string;
   status: TicketStatus;
   severity: TicketSeverity;
@@ -38,8 +45,16 @@ export class Ticket extends AggregateRoot<TicketProps> {
     return new Ticket(props, id);
   }
 
-  get portalId(): string {
+  get portalId(): string | null | undefined {
     return this.props.portalId;
+  }
+
+  get source(): TicketSource {
+    return this.props.source;
+  }
+
+  get createdById(): string | null | undefined {
+    return this.props.createdById;
   }
 
   get referenceId(): string {
@@ -131,7 +146,7 @@ export class Ticket extends AggregateRoot<TicketProps> {
     this.addDomainEvent(
       new TicketResolvedEvent(
         this.id,
-        this.props.portalId,
+        this.props.portalId ?? null,
         resolutionNote,
         clientAdminEmail,
         this.props.referenceId,
@@ -152,7 +167,14 @@ export class Ticket extends AggregateRoot<TicketProps> {
 
   recordCreated(): void {
     this.addDomainEvent(
-      new TicketCreatedEvent(this.id, this.props.portalId, this.props.referenceId),
+      new TicketCreatedEvent(
+        this.id,
+        this.props.portalId ?? null,
+        this.props.referenceId,
+        this.props.source,
+        this.props.description,
+        this.props.createdById ?? null,
+      ),
     );
   }
 }
