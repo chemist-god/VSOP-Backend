@@ -1,5 +1,5 @@
 import { Ticket } from '@tickets/domain/entities/ticket.entity';
-import { TicketCategory, TicketSeverity, TicketStatus } from '@prisma/client';
+import { TicketSeverity, TicketSource, TicketStatus } from '@prisma/client';
 
 export const TICKET_REPOSITORY_PORT = Symbol('TicketRepositoryPort');
 
@@ -8,6 +8,7 @@ export interface TicketFilters {
   status?: TicketStatus;
   severity?: TicketSeverity;
   assigneeId?: string;
+  source?: TicketSource;
   fromDate?: Date;
   toDate?: Date;
 }
@@ -17,6 +18,7 @@ export interface TicketRepositoryPort {
   findById(id: string): Promise<Ticket | null>;
   findAll(filters?: TicketFilters): Promise<Ticket[]>;
   countByPortalAndDate(portalId: string, date: Date): Promise<number>;
+  countInternalByDate(date: Date): Promise<number>;
 }
 
 export interface TicketDetailRecord {
