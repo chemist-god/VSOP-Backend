@@ -48,6 +48,16 @@ export const configuration = () => {
       apiKey: process.env.RESEND_API_KEY,
       fromEmail: process.env.RESEND_FROM_EMAIL,
     },
+    email: {
+      /** Black wordmark — for light email canvases */
+      logoLightUrl:
+        process.env.VSOP_EMAIL_LOGO_LIGHT_URL ??
+        'https://res.cloudinary.com/efvls9rz/image/upload/f_auto,q_auto,w_280/v1784112481/vsop-logo-black_nztpbp.webp',
+      /** White wordmark — for dark-mode / inverted email clients */
+      logoDarkUrl:
+        process.env.VSOP_EMAIL_LOGO_DARK_URL ??
+        'https://res.cloudinary.com/efvls9rz/image/upload/f_auto,q_auto,w_280/v1784112447/vsop-logo-light-1_pesrls.webp',
+    },
     appUrls: {
       frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
     },
