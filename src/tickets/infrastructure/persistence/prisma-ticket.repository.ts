@@ -1,5 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { Prisma, TicketSeverity, TicketStatus } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
+import { Prisma, TicketSeverity, TicketSource, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Ticket } from '@tickets/domain/entities/ticket.entity';
 import { TicketDetailRecord, TicketFilters, TicketRepositoryPort } from '@tickets/application/ports/ticket-repository.port';
@@ -10,7 +10,9 @@ export class PrismaTicketRepository implements TicketRepositoryPort {
 
   private toDomain(raw: {
     id: string;
-    portalId: string;
+    portalId: string | null;
+    source: TicketSource;
+    createdById: string | null;
     referenceId: string;
     status: TicketStatus;
     severity: TicketSeverity;
@@ -29,6 +31,8 @@ export class PrismaTicketRepository implements TicketRepositoryPort {
     return Ticket.create(
       {
         portalId: raw.portalId,
+        source: raw.source,
+        createdById: raw.createdById,
         referenceId: raw.referenceId,
         status: raw.status,
         severity: raw.severity,
@@ -64,7 +68,9 @@ export class PrismaTicketRepository implements TicketRepositoryPort {
       create: {
         id: ticket.id,
         referenceId: ticket.referenceId,
-        portalId: ticket.portalId,
+        portalId: ticket.portalId ?? null,
+        source: ticket.source,
+        createdById: ticket.createdById ?? null,
         status: ticket.status,
         severity: ticket.severity,
         category: ticket.category,
@@ -88,6 +94,7 @@ export class PrismaTicketRepository implements TicketRepositoryPort {
         ...(filters?.portalId && { portalId: filters.portalId }),
         ...(filters?.status && { status: filters.status }),
         ...(filters?.severity && { severity: filters.severity }),
+        ...(filters?.source && { source: filters.source }),
         ...(filters?.fromDate && { createdAt: { gte: filters.fromDate } }),
         ...(filters?.toDate && { createdAt: { lte: filters.toDate } }),
         ...(filters?.assigneeId && {
@@ -102,13 +109,19 @@ export class PrismaTicketRepository implements TicketRepositoryPort {
   }
 
   async countByPortalAndDate(portalId: string, date: Date): Promise<number> {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(date);
-    end.setHours(23, 59, 59, 999);
-
+    const { start, end } = dayBounds(date);
     return this.prisma.ticket.count({
       where: { portalId, createdAt: { gte: start, lte: end } },
+    });
+  }
+
+  async countInternalByDate(date: Date): Promise<number> {
+    const { start, end } = dayBounds(date);
+    return this.prisma.ticket.count({
+      where: {
+        source: TicketSource.INTERNAL,
+        createdAt: { gte: start, lte: end },
+      },
     });
   }
 
@@ -142,4 +155,12 @@ export class PrismaTicketRepository implements TicketRepositoryPort {
       })),
     };
   }
+}
+
+function dayBounds(date: Date) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
 }
