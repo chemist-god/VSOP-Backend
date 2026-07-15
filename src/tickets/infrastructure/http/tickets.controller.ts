@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { TicketSeverity, TicketStatus, UserRole } from '@prisma/client';
+import { TicketSeverity, TicketSource, TicketStatus, UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '@shared/infrastructure/guards/jwt-auth.guard';
 import { Roles, RolesGuard } from '@shared/infrastructure/guards/roles.guard';
 import { ListTicketsUseCase } from '@tickets/application/use-cases/list-tickets/list-tickets.use-case';
@@ -9,6 +9,9 @@ import { SetTicketSeverityUseCase } from '@tickets/application/use-cases/set-tic
 import { AddTicketNoteUseCase } from '@tickets/application/use-cases/add-ticket-note/add-ticket-note.use-case';
 import { ResolveTicketUseCase } from '@tickets/application/use-cases/resolve-ticket/resolve-ticket.use-case';
 import { ResolveTicketCommand } from '@tickets/application/use-cases/resolve-ticket/resolve-ticket.command';
+import { CreateTicketUseCase } from '@tickets/application/use-cases/create-ticket/create-ticket.use-case';
+import { CreateTicketCommand } from '@tickets/application/use-cases/create-ticket/create-ticket.command';
+import { CreateTicketDto } from '@tickets/infrastructure/http/dto/create-ticket.dto';
 import { AssignTicketUseCase } from '@assignments/application/use-cases/assign-ticket/assign-ticket.use-case';
 
 @ApiTags('Tickets')
@@ -18,6 +21,7 @@ import { AssignTicketUseCase } from '@assignments/application/use-cases/assign-t
 export class TicketsController {
   constructor(
     private readonly listTickets: ListTicketsUseCase,
+    private readonly createTicket: CreateTicketUseCase,
     private readonly changeStatus: ChangeTicketStatusUseCase,
     private readonly setSeverity: SetTicketSeverityUseCase,
     private readonly addNote: AddTicketNoteUseCase,
@@ -32,8 +36,29 @@ export class TicketsController {
     @Query('status') status?: TicketStatus,
     @Query('severity') severity?: TicketSeverity,
     @Query('assigneeId') assigneeId?: string,
+    @Query('source') source?: TicketSource,
   ) {
-    return this.listTickets.execute({ portalId, status, severity, assigneeId });
+    return this.listTickets.execute({ portalId, status, severity, assigneeId, source });
+  }
+
+  @Post()
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create an internal ticket / task (admin)' })
+  create(
+    @Body() body: CreateTicketDto,
+    @Req() req: { user: { id: string } },
+  ) {
+    return this.createTicket.execute(
+      new CreateTicketCommand(
+        body.description,
+        req.user.id,
+        body.portalId,
+        body.severity,
+        body.category,
+        body.assigneeId,
+        body.dueDate ? new Date(body.dueDate) : undefined,
+      ),
+    );
   }
 
   @Get(':id')
