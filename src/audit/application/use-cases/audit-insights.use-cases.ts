@@ -58,7 +58,13 @@ export class ListAuditLogsUseCase {
 export class GetInsightsUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
-  async execute() {
+  async execute(daysInput?: number) {
+    const allowed = [7, 14, 30] as const;
+    const days = (allowed as readonly number[]).includes(Number(daysInput))
+      ? Number(daysInput)
+      : 14;
+    const span = days - 1;
+
     const [byStatus, bySeverity, byPortal, recentResolved, total] = await Promise.all([
       this.prisma.ticket.groupBy({ by: ['status'], _count: { _all: true } }),
       this.prisma.ticket.groupBy({ by: ['severity'], _count: { _all: true } }),
@@ -91,7 +97,7 @@ export class GetInsightsUseCase {
       : [];
     const portalsById = Object.fromEntries(portals.map((portal) => [portal.id, portal]));
 
-    const since = new Date(Date.now() - 13 * 24 * 3_600_000);
+    const since = new Date(Date.now() - span * 24 * 3_600_000);
     const tickets = await this.prisma.ticket.findMany({
       where: { createdAt: { gte: since } },
       select: { createdAt: true, status: true },
@@ -99,7 +105,7 @@ export class GetInsightsUseCase {
 
     const dayKey = (date: Date) => date.toISOString().slice(0, 10);
     const trendMap = new Map<string, { created: number; resolved: number }>();
-    for (let i = 13; i >= 0; i -= 1) {
+    for (let i = span; i >= 0; i -= 1) {
       const d = new Date();
       d.setHours(0, 0, 0, 0);
       d.setDate(d.getDate() - i);
@@ -145,6 +151,7 @@ export class GetInsightsUseCase {
         slug: portalsById[row.portalId as string]?.slug ?? 'unknown',
         count: row._count._all,
       })),
+      trendDays: days,
       trend: [...trendMap.entries()].map(([date, counts]) => ({
         date,
         ...counts,
