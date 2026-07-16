@@ -6,6 +6,7 @@ interface PortalProps {
   companyName: string;
   clientAdminEmail: string;
   description?: string | null;
+  logoUrl?: string | null;
   status: PortalStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -32,6 +33,10 @@ export class Portal extends AggregateRoot<PortalProps> {
     return this.props.description;
   }
 
+  get logoUrl(): string | null | undefined {
+    return this.props.logoUrl;
+  }
+
   get status(): PortalStatus {
     return this.props.status;
   }
@@ -42,6 +47,19 @@ export class Portal extends AggregateRoot<PortalProps> {
 
   deactivate(): void {
     this.props.status = PortalStatus.INACTIVE;
+  }
+
+  updateProfile(input: {
+    companyName: string;
+    clientAdminEmail: string;
+    description?: string | null;
+    logoUrl?: string | null;
+  }): void {
+    this.props.companyName = input.companyName.trim();
+    this.props.clientAdminEmail = input.clientAdminEmail.trim();
+    this.props.description = input.description?.trim() || null;
+    this.props.logoUrl = input.logoUrl?.trim() || null;
+    this.props.updatedAt = new Date();
   }
 
   get isActive(): boolean {
