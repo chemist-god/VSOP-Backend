@@ -95,6 +95,7 @@ model Portal {
   companyName      String
   clientAdminEmail String
   description      String?
+  logoUrl          String?
   companyId        String?
   status           PortalStatus @default(ACTIVE)
   createdAt        DateTime     @default(now())
