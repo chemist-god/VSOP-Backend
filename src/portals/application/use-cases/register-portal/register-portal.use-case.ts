@@ -29,9 +29,10 @@ export class RegisterPortalUseCase {
     const portal = Portal.create(
       {
         slug: command.slug.toLowerCase().trim(),
-        companyName: command.companyName,
-        clientAdminEmail: command.clientAdminEmail,
-        description: command.description,
+        companyName: command.companyName.trim(),
+        clientAdminEmail: command.clientAdminEmail.trim(),
+        description: command.description?.trim() || null,
+        logoUrl: command.logoUrl?.trim() || null,
         status: PortalStatus.ACTIVE,
         createdAt: now,
         updatedAt: now,
