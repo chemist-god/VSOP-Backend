@@ -31,7 +31,7 @@ export class AuditController {
   @Get('insights')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Operational insights aggregates' })
-  getInsights() {
-    return this.insights.execute();
+  getInsights(@Query('days') days?: string) {
+    return this.insights.execute(days ? Number(days) : undefined);
   }
 }
