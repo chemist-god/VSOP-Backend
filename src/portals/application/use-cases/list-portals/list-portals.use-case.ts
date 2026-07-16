@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PortalStatus } from '@prisma/client';
 import { PORTAL_REPOSITORY_PORT, PortalRepositoryPort } from '@portals/application/ports/portal-repository.port';
 import { PortalNotFoundError } from '@portals/domain/errors/portal-not-found.error';
 
@@ -14,7 +13,8 @@ export class ListPortalsUseCase {
       slug: portal.slug,
       companyName: portal.companyName,
       clientAdminEmail: portal.clientAdminEmail,
-      description: portal.description,
+      description: portal.description ?? null,
+      logoUrl: portal.logoUrl ?? null,
       status: portal.status,
     }));
   }
@@ -27,7 +27,8 @@ export class ListPortalsUseCase {
       slug: portal.slug,
       companyName: portal.companyName,
       clientAdminEmail: portal.clientAdminEmail,
-      description: portal.description,
+      description: portal.description ?? null,
+      logoUrl: portal.logoUrl ?? null,
       status: portal.status,
     };
   }
