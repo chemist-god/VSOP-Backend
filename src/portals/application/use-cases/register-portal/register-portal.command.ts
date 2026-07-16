@@ -4,5 +4,6 @@ export class RegisterPortalCommand {
     public readonly companyName: string,
     public readonly clientAdminEmail: string,
     public readonly description?: string,
+    public readonly logoUrl?: string,
   ) {}
 }
