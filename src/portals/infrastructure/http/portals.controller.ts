@@ -5,7 +5,10 @@ import { JwtAuthGuard } from '@shared/infrastructure/guards/jwt-auth.guard';
 import { Roles, RolesGuard } from '@shared/infrastructure/guards/roles.guard';
 import { RegisterPortalUseCase } from '@portals/application/use-cases/register-portal/register-portal.use-case';
 import { RegisterPortalCommand } from '@portals/application/use-cases/register-portal/register-portal.command';
+import { UpdatePortalUseCase } from '@portals/application/use-cases/update-portal/update-portal.use-case';
+import { UpdatePortalCommand } from '@portals/application/use-cases/update-portal/update-portal.command';
 import { RegisterPortalDto } from './dto/register-portal.dto';
+import { UpdatePortalDto } from './dto/update-portal.dto';
 import { ListPortalsUseCase } from '@portals/application/use-cases/list-portals/list-portals.use-case';
 import { RotatePortalKeyUseCase } from '@portals/application/use-cases/rotate-portal-key/rotate-portal-key.use-case';
 import { UpdatePortalStatusUseCase } from '@portals/application/use-cases/update-portal-status/update-portal-status.use-case';
@@ -17,6 +20,7 @@ import { UpdatePortalStatusUseCase } from '@portals/application/use-cases/update
 export class PortalsController {
   constructor(
     private readonly registerPortal: RegisterPortalUseCase,
+    private readonly updatePortal: UpdatePortalUseCase,
     private readonly listPortals: ListPortalsUseCase,
     private readonly rotatePortalKey: RotatePortalKeyUseCase,
     private readonly updatePortalStatus: UpdatePortalStatusUseCase,
@@ -33,7 +37,13 @@ export class PortalsController {
   @ApiOperation({ summary: 'Register a new portal' })
   register(@Body() dto: RegisterPortalDto) {
     return this.registerPortal.execute(
-      new RegisterPortalCommand(dto.slug, dto.companyName, dto.clientAdminEmail, dto.description),
+      new RegisterPortalCommand(
+        dto.slug,
+        dto.companyName,
+        dto.clientAdminEmail,
+        dto.description,
+        dto.logoUrl,
+      ),
     );
   }
 
@@ -41,6 +51,21 @@ export class PortalsController {
   @ApiOperation({ summary: 'Get portal detail' })
   getById(@Param('id') id: string) {
     return this.listPortals.executeById(id);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update portal profile (slug locked)' })
+  update(@Param('id') id: string, @Body() dto: UpdatePortalDto) {
+    return this.updatePortal.execute(
+      new UpdatePortalCommand(
+        id,
+        dto.companyName,
+        dto.clientAdminEmail,
+        dto.description,
+        dto.logoUrl,
+      ),
+    );
   }
 
   @Post(':id/rotate-key')
