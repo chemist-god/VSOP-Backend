@@ -15,6 +15,7 @@ export class PrismaPortalRepository implements PortalRepositoryPort {
     companyName: string;
     clientAdminEmail: string;
     description: string | null;
+    logoUrl: string | null;
     status: PortalStatus;
     createdAt: Date;
     updatedAt: Date;
@@ -25,6 +26,7 @@ export class PrismaPortalRepository implements PortalRepositoryPort {
         companyName: raw.companyName,
         clientAdminEmail: raw.clientAdminEmail,
         description: raw.description,
+        logoUrl: raw.logoUrl,
         status: raw.status,
         createdAt: raw.createdAt,
         updatedAt: raw.updatedAt,
@@ -39,7 +41,8 @@ export class PrismaPortalRepository implements PortalRepositoryPort {
       update: {
         companyName: portal.companyName,
         clientAdminEmail: portal.clientAdminEmail,
-        description: portal.description,
+        description: portal.description ?? null,
+        logoUrl: portal.logoUrl ?? null,
         status: portal.status,
       },
       create: {
@@ -47,7 +50,8 @@ export class PrismaPortalRepository implements PortalRepositoryPort {
         slug: portal.slug,
         companyName: portal.companyName,
         clientAdminEmail: portal.clientAdminEmail,
-        description: portal.description,
+        description: portal.description ?? null,
+        logoUrl: portal.logoUrl ?? null,
         status: portal.status,
       },
     });
