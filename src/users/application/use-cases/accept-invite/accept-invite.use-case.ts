@@ -12,9 +12,11 @@ import { USER_REPOSITORY_PORT, UserRepositoryPort } from '@users/application/por
 import { ID_GENERATOR_PORT, IdGeneratorPort } from '@shared/application/ports/id-generator.port';
 import { PASSWORD_HASHER_PORT, PasswordHasherPort } from '@shared/application/ports/password-hasher.port';
 import { CLOCK_PORT, ClockPort } from '@shared/application/ports/clock.port';
+import { OnboardingStep } from '@prisma/client';
 import { User } from '@users/domain/entities/user.entity';
 import { EmailAddress } from '@users/domain/value-objects/email-address.vo';
 import { DuplicateEmailError } from '@users/domain/errors/duplicate-email.error';
+import { resolveOnboardingStepForClient } from '@users/domain/onboarding.util';
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -105,6 +107,10 @@ export class AcceptInviteUseCase {
         passwordHash,
         role: invite.role,
         isActive: true,
+        tourCompleted: false,
+        onboardingStep: OnboardingStep.PRODUCT_TOUR,
+        acceptedTermsAt: null,
+        termsVersion: null,
         createdAt: now,
         updatedAt: now,
       },
@@ -147,6 +153,10 @@ export class AcceptInviteUseCase {
         name: user.name,
         email: user.email.value,
         role: user.role,
+        tourCompleted: user.tourCompleted,
+        onboardingStep: resolveOnboardingStepForClient(user),
+        acceptedTermsAt: user.acceptedTermsAt ?? null,
+        termsVersion: user.termsVersion ?? null,
       },
     };
   }
