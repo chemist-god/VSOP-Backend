@@ -9,5 +9,6 @@ export class CreateTicketCommand {
     public readonly category?: TicketCategory,
     public readonly assigneeId?: string,
     public readonly dueDate?: Date,
+    public readonly screenshotUrls: string[] = [],
   ) {}
 }
