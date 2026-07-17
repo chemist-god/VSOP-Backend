@@ -68,7 +68,7 @@ export class AssignTicketUseCase {
       ? await this.portalRepo.findById(ticket.portalId)
       : null;
     const frontendUrl =
-      this.config.get<string[]>('security.corsOrigins')?.[0] ?? 'http://localhost:3000';
+      this.config.get<string>('appUrls.frontendUrl') ?? 'http://localhost:3000';
 
     await this.notificationPort.sendAssignmentNotification({
       assigneeName: assignee.name,
