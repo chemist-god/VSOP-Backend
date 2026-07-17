@@ -27,14 +27,9 @@ export class ResendNotificationAdapter implements NotificationPort {
     this.fromEmail =
       config.get<string>('resend.fromEmail') ?? 'support@veritrack.cloud';
 
-    const rawFrontend =
-      config.get<string>('appUrls.frontendUrl') ?? 'http://localhost:3000';
-    // FRONTEND_URL may be comma-separated with CORS; use the first origin for links/logo host
-    const frontendUrl = rawFrontend.split(',')[0]?.trim().replace(/\/$/, '') ||
-      'http://localhost:3000';
-
     this.emailCtx = {
-      frontendUrl,
+      frontendUrl:
+        config.get<string>('appUrls.frontendUrl') ?? 'http://localhost:3000',
       brand: {
         logoLightUrl:
           config.get<string>('email.logoLightUrl') ??
