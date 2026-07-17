@@ -20,10 +20,16 @@ import {
 } from '@users/application/use-cases/profile/profile.use-cases';
 import { UpdateUserStatusUseCase } from '@users/application/use-cases/update-user-status/update-user-status.use-case';
 import {
+  AcceptTermsUseCase,
+  UpdateOnboardingStepUseCase,
+} from '@users/application/use-cases/onboarding/onboarding.use-cases';
+import {
   AcceptInviteDto,
+  AcceptTermsDto,
   ChangePasswordDto,
   InviteUserDto,
   UpdateMeDto,
+  UpdateOnboardingStepDto,
   UpdateUserStatusDto,
 } from './dto/invite-user.dto';
 
@@ -38,6 +44,8 @@ export class UsersController {
     private readonly changePassword: ChangeMyPasswordUseCase,
     private readonly getMemberDetail: GetTeamMemberDetailUseCase,
     private readonly updateUserStatus: UpdateUserStatusUseCase,
+    private readonly updateOnboardingStep: UpdateOnboardingStepUseCase,
+    private readonly acceptTerms: AcceptTermsUseCase,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -63,6 +71,22 @@ export class UsersController {
   @ApiOperation({ summary: 'Change current user password' })
   updatePassword(@Req() req: { user: { id: string } }, @Body() dto: ChangePasswordDto) {
     return this.changePassword.execute(req.user.id, dto.currentPassword, dto.newPassword);
+  }
+
+  @Patch('me/onboarding')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Persist first-login onboarding resume point' })
+  updateOnboarding(@Req() req: { user: { id: string } }, @Body() dto: UpdateOnboardingStepDto) {
+    return this.updateOnboardingStep.execute(req.user.id, dto.step);
+  }
+
+  @Post('me/onboarding/accept-terms')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Accept the current terms version and complete onboarding' })
+  acceptTermsOfService(@Req() req: { user: { id: string } }, @Body() dto: AcceptTermsDto) {
+    return this.acceptTerms.execute(req.user.id, dto.termsVersion);
   }
 
   @Post('invite')
