@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_DATABASE_URL")
 }
 
@@ -75,16 +75,23 @@ enum ActorType {
   SYSTEM
 }
 
-model Company {
-  id                  String           @id @default(uuid())
-  name                String
-  slug                String           @unique
-  primaryContactEmail String?
-  status              CompanyStatus    @default(ACTIVE)
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+enum OnboardingStep {
+  PRODUCT_TOUR
+  SPOTLIGHTS
+  AGREEMENT
+  COMPLETE
+}
 
-  portals             Portal[]
+model Company {
+  id                  String        @id @default(uuid())
+  name                String
+  slug                String        @unique
+  primaryContactEmail String?
+  status              CompanyStatus @default(ACTIVE)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  portals Portal[]
 
   @@map("companies")
 }
@@ -101,24 +108,24 @@ model Portal {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  company          Company?     @relation(fields: [companyId], references: [id])
-  apiKeys          ApiKey[]
-  tickets          Ticket[]
+  company Company? @relation(fields: [companyId], references: [id])
+  apiKeys ApiKey[]
+  tickets Ticket[]
 
   @@index([companyId])
   @@map("portals")
 }
 
 model ApiKey {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   portalId   String
   keyHash    String
   keyPrefix  String
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
   lastUsedAt DateTime?
 
-  portal     Portal   @relation(fields: [portalId], references: [id])
+  portal Portal @relation(fields: [portalId], references: [id])
 
   @@index([portalId, isActive])
   @@map("api_keys")
@@ -145,13 +152,13 @@ model Ticket {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  portal              Portal?              @relation(fields: [portalId], references: [id])
-  createdBy           User?                @relation("TicketCreatedBy", fields: [createdById], references: [id])
-  notes               TicketNote[]
-  assignments         Assignment[]
-  notifications       NotificationLog[]
-  auditLogs           AuditLog[]
-  inAppNotifications  InAppNotification[]
+  portal             Portal?             @relation(fields: [portalId], references: [id])
+  createdBy          User?               @relation("TicketCreatedBy", fields: [createdById], references: [id])
+  notes              TicketNote[]
+  assignments        Assignment[]
+  notifications      NotificationLog[]
+  auditLogs          AuditLog[]
+  inAppNotifications InAppNotification[]
 
   @@index([status, createdAt])
   @@index([portalId, createdAt])
@@ -161,14 +168,14 @@ model Ticket {
 }
 
 model InAppNotification {
-  id        String                 @id @default(uuid())
+  id        String                @id @default(uuid())
   userId    String
   type      InAppNotificationType
   title     String
   body      String
   ticketId  String?
   readAt    DateTime?
-  createdAt DateTime               @default(now())
+  createdAt DateTime              @default(now())
 
   user   User    @relation(fields: [userId], references: [id])
   ticket Ticket? @relation(fields: [ticketId], references: [id])
@@ -179,15 +186,15 @@ model InAppNotification {
 }
 
 model TicketNote {
-  id        String   @id @default(uuid())
-  ticketId  String
-  authorId  String
-  content   String
-  isInternal Boolean @default(true)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  ticketId   String
+  authorId   String
+  content    String
+  isInternal Boolean  @default(true)
+  createdAt  DateTime @default(now())
 
-  ticket    Ticket   @relation(fields: [ticketId], references: [id])
-  author    User     @relation(fields: [authorId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
 
   @@index([ticketId, createdAt])
   @@map("ticket_notes")
@@ -202,8 +209,8 @@ model Assignment {
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
 
-  ticket     Ticket   @relation(fields: [ticketId], references: [id])
-  assignee   User     @relation("AssignedTo", fields: [assigneeId], references: [id])
+  ticket   Ticket @relation(fields: [ticketId], references: [id])
+  assignee User   @relation("AssignedTo", fields: [assigneeId], references: [id])
 
   @@index([ticketId, isActive])
   @@index([assigneeId, isActive])
@@ -211,22 +218,26 @@ model Assignment {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         UserRole @default(DEVELOPER)
-  isActive     Boolean  @default(true)
-  resetToken   String?
-  resetTokenAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String         @id @default(uuid())
+  name            String
+  email           String         @unique
+  passwordHash    String
+  role            UserRole       @default(DEVELOPER)
+  isActive        Boolean        @default(true)
+  resetToken      String?
+  resetTokenAt    DateTime?
+  tourCompleted   Boolean        @default(false)
+  onboardingStep  OnboardingStep @default(PRODUCT_TOUR)
+  acceptedTermsAt DateTime?
+  termsVersion    String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  notes               TicketNote[]
-  assignments         Assignment[]        @relation("AssignedTo")
-  invitationsSent     UserInvitation[]    @relation("InvitedBy")
-  ticketsCreated      Ticket[]            @relation("TicketCreatedBy")
-  inAppNotifications  InAppNotification[]
+  notes              TicketNote[]
+  assignments        Assignment[]        @relation("AssignedTo")
+  invitationsSent    UserInvitation[]    @relation("InvitedBy")
+  ticketsCreated     Ticket[]            @relation("TicketCreatedBy")
+  inAppNotifications InAppNotification[]
 
   @@map("users")
 }
@@ -242,7 +253,7 @@ model UserInvitation {
   invitedById String
   createdAt   DateTime  @default(now())
 
-  invitedBy   User      @relation("InvitedBy", fields: [invitedById], references: [id])
+  invitedBy User @relation("InvitedBy", fields: [invitedById], references: [id])
 
   @@index([email, acceptedAt])
   @@index([tokenHash])
@@ -261,7 +272,7 @@ model AuditLog {
   afterState  Json?
   createdAt   DateTime  @default(now())
 
-  ticket      Ticket?   @relation(fields: [ticketId], references: [id])
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
 
   @@index([ticketId, createdAt])
   @@index([createdAt])
@@ -277,7 +288,7 @@ model NotificationLog {
   sentAt           DateTime           @default(now())
   errorMessage     String?
 
-  ticket           Ticket             @relation(fields: [ticketId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id])
 
   @@index([ticketId, sentAt])
   @@map("notification_logs")
@@ -294,4 +305,3 @@ model RefreshToken {
   @@index([userId, isRevoked])
   @@map("refresh_tokens")
 }
-
