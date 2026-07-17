@@ -71,7 +71,7 @@ export class CreateTicketUseCase {
         category: command.category ?? TicketCategory.OTHER,
         tags: [],
         description,
-        screenshotUrls: [],
+        screenshotUrls: command.screenshotUrls ?? [],
         createdAt: now,
         updatedAt: now,
       },
