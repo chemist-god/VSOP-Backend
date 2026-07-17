@@ -11,9 +11,10 @@ import { AddTicketNoteUseCase } from './application/use-cases/add-ticket-note/ad
 import { TicketsController } from './infrastructure/http/tickets.controller';
 import { PortalsModule } from '@portals/portals.module';
 import { AssignmentsModule } from '@assignments/assignments.module';
+import { StorageModule } from '@storage/storage.module';
 
 @Module({
-  imports: [PortalsModule, forwardRef(() => AssignmentsModule)],
+  imports: [PortalsModule, StorageModule, forwardRef(() => AssignmentsModule)],
   controllers: [TicketsController],
   providers: [
     { provide: TICKET_REPOSITORY_PORT, useClass: PrismaTicketRepository },
