@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
-import { UserRole } from '@prisma/client';
+import { OnboardingStep, UserRole } from '@prisma/client';
 
 export class InviteUserDto {
   @ApiProperty({ example: 'Kwame Mensah' })
@@ -54,4 +54,16 @@ export class UpdateUserStatusDto {
   })
   @IsBoolean()
   isActive!: boolean;
+}
+
+export class UpdateOnboardingStepDto {
+  @ApiProperty({ enum: OnboardingStep, example: OnboardingStep.SPOTLIGHTS })
+  @IsEnum(OnboardingStep)
+  step!: OnboardingStep;
+}
+
+export class AcceptTermsDto {
+  @ApiProperty({ example: 'v1.0.0' })
+  @IsString()
+  termsVersion!: string;
 }
