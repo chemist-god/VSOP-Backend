@@ -1,14 +1,25 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { OnboardingStep } from '@prisma/client';
 import { USER_REPOSITORY_PORT, UserRepositoryPort } from '@users/application/ports/user-repository.port';
 import { PASSWORD_HASHER_PORT, PasswordHasherPort } from '@shared/application/ports/password-hasher.port';
+import { resolveOnboardingStepForClient } from '@users/domain/onboarding.util';
 import { LoginCommand } from './login.command';
 
 export interface LoginResult {
   accessToken: string;
   refreshToken: string;
-  user: { id: string; name: string; email: string; role: string };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    tourCompleted: boolean;
+    onboardingStep: OnboardingStep;
+    acceptedTermsAt: Date | null;
+    termsVersion: string | null;
+  };
 }
 
 @Injectable()
@@ -53,7 +64,16 @@ export class LoginUseCase {
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, name: user.name, email: user.email.value, role: user.role },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email.value,
+        role: user.role,
+        tourCompleted: user.tourCompleted,
+        onboardingStep: resolveOnboardingStepForClient(user),
+        acceptedTermsAt: user.acceptedTermsAt ?? null,
+        termsVersion: user.termsVersion ?? null,
+      },
     };
   }
 }
