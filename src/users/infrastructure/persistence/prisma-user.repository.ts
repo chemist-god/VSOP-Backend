@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { OnboardingStep, UserRole } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { User } from '@users/domain/entities/user.entity';
 import { EmailAddress } from '@users/domain/value-objects/email-address.vo';
@@ -18,6 +18,10 @@ export class PrismaUserRepository implements UserRepositoryPort {
     isActive: boolean;
     resetToken: string | null;
     resetTokenAt: Date | null;
+    tourCompleted: boolean;
+    onboardingStep: OnboardingStep;
+    acceptedTermsAt: Date | null;
+    termsVersion: string | null;
     createdAt: Date;
     updatedAt: Date;
   }): User {
@@ -30,6 +34,10 @@ export class PrismaUserRepository implements UserRepositoryPort {
         isActive: raw.isActive,
         resetToken: raw.resetToken,
         resetTokenAt: raw.resetTokenAt,
+        tourCompleted: raw.tourCompleted,
+        onboardingStep: raw.onboardingStep,
+        acceptedTermsAt: raw.acceptedTermsAt,
+        termsVersion: raw.termsVersion,
         createdAt: raw.createdAt,
         updatedAt: raw.updatedAt,
       },
@@ -48,6 +56,10 @@ export class PrismaUserRepository implements UserRepositoryPort {
         isActive: user.isActive,
         resetToken: user.resetToken ?? null,
         resetTokenAt: user.resetTokenAt ?? null,
+        tourCompleted: user.tourCompleted,
+        onboardingStep: user.onboardingStep,
+        acceptedTermsAt: user.acceptedTermsAt ?? null,
+        termsVersion: user.termsVersion ?? null,
       },
       create: {
         id: user.id,
@@ -56,6 +68,10 @@ export class PrismaUserRepository implements UserRepositoryPort {
         passwordHash: user.passwordHash,
         role: user.role,
         isActive: user.isActive,
+        tourCompleted: user.tourCompleted,
+        onboardingStep: user.onboardingStep,
+        acceptedTermsAt: user.acceptedTermsAt ?? null,
+        termsVersion: user.termsVersion ?? null,
       },
     });
   }
