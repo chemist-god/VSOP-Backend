@@ -32,4 +32,12 @@ export class CreateTicketDto {
   @ValidateIf((o: CreateTicketDto) => o.assigneeId != null || o.dueDate != null)
   @IsDateString()
   dueDate?: string;
+
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'string', format: 'binary' },
+    description: 'Optional screenshots (max 3, 5 MB each)',
+  })
+  @IsOptional()
+  screenshots?: Express.Multer.File[];
 }
