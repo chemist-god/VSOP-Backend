@@ -68,10 +68,8 @@ export class InviteUserUseCase {
       },
     });
 
-    const frontendUrl = (this.config.get<string>('appUrls.frontendUrl') ?? 'http://localhost:3000').replace(
-      /\/$/,
-      '',
-    );
+    const frontendUrl =
+      this.config.get<string>('appUrls.frontendUrl') ?? 'http://localhost:3000';
     const acceptUrl = `${frontendUrl}/invite/accept?token=${plaintextToken}`;
 
     await this.notifications.sendInviteNotification({
