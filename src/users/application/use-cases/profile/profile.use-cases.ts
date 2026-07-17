@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, UnauthorizedException } from '
 import { USER_REPOSITORY_PORT, UserRepositoryPort } from '@users/application/ports/user-repository.port';
 import { PASSWORD_HASHER_PORT, PasswordHasherPort } from '@shared/application/ports/password-hasher.port';
 import { UserNotFoundError } from '@users/domain/errors/user-not-found.error';
+import { resolveOnboardingStepForClient } from '@users/domain/onboarding.util';
 
 @Injectable()
 export class GetMeUseCase {
@@ -16,6 +17,10 @@ export class GetMeUseCase {
       email: user.email.value,
       role: user.role,
       isActive: user.isActive,
+      tourCompleted: user.tourCompleted,
+      onboardingStep: resolveOnboardingStepForClient(user),
+      acceptedTermsAt: user.acceptedTermsAt ?? null,
+      termsVersion: user.termsVersion ?? null,
       createdAt: user.createdAt,
     };
   }
