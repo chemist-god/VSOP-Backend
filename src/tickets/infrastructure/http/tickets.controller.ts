@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Query, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TicketSeverity, TicketSource, TicketStatus, UserRole } from '@prisma/client';
+import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '@shared/infrastructure/guards/jwt-auth.guard';
 import { Roles, RolesGuard } from '@shared/infrastructure/guards/roles.guard';
 import { ListTicketsUseCase } from '@tickets/application/use-cases/list-tickets/list-tickets.use-case';
@@ -13,6 +15,8 @@ import { CreateTicketUseCase } from '@tickets/application/use-cases/create-ticke
 import { CreateTicketCommand } from '@tickets/application/use-cases/create-ticket/create-ticket.command';
 import { CreateTicketDto } from '@tickets/infrastructure/http/dto/create-ticket.dto';
 import { AssignTicketUseCase } from '@assignments/application/use-cases/assign-ticket/assign-ticket.use-case';
+import { STORAGE_PORT, StoragePort } from '@storage/application/ports/storage.port';
+import { PORTAL_REPOSITORY_PORT, PortalRepositoryPort } from '@portals/application/ports/portal-repository.port';
 
 @ApiTags('Tickets')
 @ApiBearerAuth()
@@ -27,6 +31,8 @@ export class TicketsController {
     private readonly addNote: AddTicketNoteUseCase,
     private readonly resolveTicket: ResolveTicketUseCase,
     private readonly assignTicket: AssignTicketUseCase,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    @Inject(PORTAL_REPOSITORY_PORT) private readonly portalRepo: PortalRepositoryPort,
   ) {}
 
   @Get()
@@ -43,11 +49,27 @@ export class TicketsController {
 
   @Post()
   @Roles(UserRole.ADMIN)
+  @ApiConsumes('multipart/form-data', 'application/json')
   @ApiOperation({ summary: 'Create an internal ticket / task (admin)' })
-  create(
+  @UseInterceptors(
+    FilesInterceptor('screenshots', 3, {
+      storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  async create(
     @Body() body: CreateTicketDto,
+    @UploadedFiles() files: Array<Express.Multer.File>,
     @Req() req: { user: { id: string } },
   ) {
+    let uploadSlug = 'internal';
+    if (body.portalId) {
+      const portal = await this.portalRepo.findById(body.portalId);
+      if (portal) uploadSlug = portal.slug;
+    }
+
+    const screenshotUrls = await this.storage.uploadScreenshots(files ?? [], uploadSlug);
+
     return this.createTicket.execute(
       new CreateTicketCommand(
         body.description,
@@ -57,6 +79,7 @@ export class TicketsController {
         body.category,
         body.assigneeId,
         body.dueDate ? new Date(body.dueDate) : undefined,
+        screenshotUrls,
       ),
     );
   }
