@@ -16,6 +16,10 @@ import {
 } from './application/use-cases/profile/profile.use-cases';
 import { GetTeamMemberDetailUseCase } from './application/use-cases/get-team-member-detail/get-team-member-detail.use-case';
 import { UpdateUserStatusUseCase } from './application/use-cases/update-user-status/update-user-status.use-case';
+import {
+  AcceptTermsUseCase,
+  UpdateOnboardingStepUseCase,
+} from './application/use-cases/onboarding/onboarding.use-cases';
 import { InvitesController, UsersController } from './infrastructure/http/users.controller';
 import { NotificationsModule } from '@notifications/notifications.module';
 
@@ -42,6 +46,8 @@ import { NotificationsModule } from '@notifications/notifications.module';
     ChangeMyPasswordUseCase,
     GetTeamMemberDetailUseCase,
     UpdateUserStatusUseCase,
+    UpdateOnboardingStepUseCase,
+    AcceptTermsUseCase,
   ],
   exports: [USER_REPOSITORY_PORT],
 })
