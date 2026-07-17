@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { OnboardingStep } from '@prisma/client';
 import { USER_REPOSITORY_PORT, UserRepositoryPort } from '@users/application/ports/user-repository.port';
 import { ID_GENERATOR_PORT, IdGeneratorPort } from '@shared/application/ports/id-generator.port';
 import { PASSWORD_HASHER_PORT, PasswordHasherPort } from '@shared/application/ports/password-hasher.port';
@@ -33,6 +34,10 @@ export class CreateUserUseCase {
         passwordHash,
         role: command.role,
         isActive: true,
+        tourCompleted: false,
+        onboardingStep: OnboardingStep.PRODUCT_TOUR,
+        acceptedTermsAt: null,
+        termsVersion: null,
         createdAt: now,
         updatedAt: now,
       },
