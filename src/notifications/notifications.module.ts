@@ -4,6 +4,7 @@ import { IN_APP_NOTIFICATION_REPOSITORY_PORT } from './application/ports/in-app-
 import { ResendNotificationAdapter } from './infrastructure/resend-notification.adapter';
 import { PrismaInAppNotificationRepository } from './infrastructure/persistence/prisma-in-app-notification.repository';
 import { ResolutionNotificationListener } from './application/listeners/resolution-notification.listener';
+import { TicketCreatedNotificationListener } from './application/listeners/ticket-created-notification.listener';
 import { InAppNotificationListener } from './application/listeners/in-app-notification.listener';
 import { ListInboxNotificationsUseCase } from './application/use-cases/list-inbox-notifications.use-case';
 import {
@@ -21,6 +22,7 @@ import { InboxController } from './infrastructure/http/inbox.controller';
       useClass: PrismaInAppNotificationRepository,
     },
     ResolutionNotificationListener,
+    TicketCreatedNotificationListener,
     InAppNotificationListener,
     ListInboxNotificationsUseCase,
     MarkNotificationReadUseCase,
