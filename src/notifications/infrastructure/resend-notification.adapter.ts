@@ -6,12 +6,14 @@ import {
   AssignmentNotificationPayload,
   ResolutionNotificationPayload,
   InviteNotificationPayload,
+  TicketCreatedNotificationPayload,
 } from '@notifications/application/ports/notification.port';
 import {
   EmailRenderContext,
   renderAssignmentEmail,
   renderInviteEmail,
   renderResolutionEmail,
+  renderTicketCreatedEmail,
 } from './email-templates';
 
 @Injectable()
@@ -112,6 +114,31 @@ export class ResendNotificationAdapter implements NotificationPort {
       });
     } catch (err) {
       this.logger.error('Failed to send invite notification', err);
+      throw err;
+    }
+  }
+
+  async sendTicketCreatedNotification(
+    payload: TicketCreatedNotificationPayload,
+  ): Promise<void> {
+    if (!this.resend) {
+      this.logger.debug(
+        `Skipped ticket-created email for ${payload.ticketReferenceId} (no Resend key)`,
+      );
+      return;
+    }
+
+    const email = renderTicketCreatedEmail(payload, this.emailCtx);
+
+    try {
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to: payload.recipientEmail,
+        subject: email.subject,
+        html: email.html,
+      });
+    } catch (err) {
+      this.logger.error('Failed to send ticket-created notification', err);
       throw err;
     }
   }
