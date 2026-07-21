@@ -52,6 +52,7 @@ enum UserRole {
 enum NotificationType {
   ASSIGNMENT
   RESOLUTION
+  TICKET_CREATED
 }
 
 enum NotificationStatus {
