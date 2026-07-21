@@ -25,27 +25,48 @@ export class InAppNotificationListener {
   @OnEvent('ticket.created')
   async handleTicketCreated(event: TicketCreatedEvent): Promise<void> {
     try {
-      if (event.source !== TicketSource.INTAKE) return;
-
-      const admins = await this.prisma.user.findMany({
-        where: { role: UserRole.ADMIN, isActive: true },
-        select: { id: true },
-      });
+      const recipientIds = await this.resolveCreatedRecipientIds(event);
+      if (recipientIds.length === 0) return;
 
       const snippet = truncate(event.description, 120);
+      const isIntake = event.source === TicketSource.INTAKE;
+
       await this.repo.createMany(
-        admins.map((admin) => ({
+        recipientIds.map((userId) => ({
           id: this.idGen.generate(),
-          userId: admin.id,
+          userId,
           type: 'TICKET_CREATED' as const,
-          title: `New ticket ${event.referenceId}`,
-          body: snippet || 'A new portal support ticket needs triage.',
+          title: isIntake
+            ? `New ticket ${event.referenceId}`
+            : `Internal ticket ${event.referenceId}`,
+          body:
+            snippet ||
+            (isIntake
+              ? 'A new portal support ticket needs triage.'
+              : 'An internal ticket was filed.'),
           ticketId: event.ticketId,
         })),
       );
     } catch (err) {
       this.logger.error('Failed to create inbox items for ticket.created', err);
     }
+  }
+
+  /** Active admins always; internal tickets also include the creator. */
+  private async resolveCreatedRecipientIds(
+    event: TicketCreatedEvent,
+  ): Promise<string[]> {
+    const admins = await this.prisma.user.findMany({
+      where: { role: UserRole.ADMIN, isActive: true },
+      select: { id: true },
+    });
+    const ids = new Set(admins.map((a) => a.id));
+
+    if (event.source === TicketSource.INTERNAL && event.createdById) {
+      ids.add(event.createdById);
+    }
+
+    return [...ids];
   }
 
   @OnEvent('ticket.assigned')
