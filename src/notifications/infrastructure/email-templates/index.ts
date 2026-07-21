@@ -2,6 +2,7 @@ import {
   InviteNotificationPayload,
   AssignmentNotificationPayload,
   ResolutionNotificationPayload,
+  TicketCreatedNotificationPayload,
 } from '@notifications/application/ports/notification.port';
 import { escapeHtml, formatDate, formatDateTime } from './html';
 import {
@@ -91,6 +92,62 @@ export function renderAssignmentEmail(
       frontendUrl: ctx.frontendUrl,
       brand: ctx.brand,
       title: 'Ticket assigned',
+      previewText: `${payload.ticketReferenceId} · ${payload.portalName}`,
+      bodyHtml: body,
+    }),
+  };
+}
+
+export function renderTicketCreatedEmail(
+  payload: TicketCreatedNotificationPayload,
+  ctx: EmailRenderContext,
+): { subject: string; html: string } {
+  const isIntake = payload.source === 'INTAKE';
+  const sourceLabel = isIntake ? 'Portal intake' : 'Internal';
+  const intro = isIntake
+    ? 'A client just submitted a support report. Open it in VSOP when you’re ready to triage.'
+    : payload.createdByName
+      ? `<strong style="font-weight:600;">${escapeHtml(payload.createdByName)}</strong> filed an internal ticket. Here’s a quick look.`
+      : 'An internal ticket was filed in VSOP. Here’s a quick look.';
+
+  const body = [
+    heading(isIntake ? 'New portal report' : 'Internal ticket created'),
+    paragraph(`Hi ${escapeHtml(payload.recipientName)},`),
+    paragraph(intro),
+    detailBlock([
+      {
+        label: 'Reference',
+        value: escapeHtml(payload.ticketReferenceId),
+      },
+      {
+        label: 'Source',
+        value: escapeHtml(sourceLabel),
+      },
+      {
+        label: 'Portal',
+        value: escapeHtml(payload.portalName),
+      },
+      {
+        label: 'Issue',
+        value: escapeHtml(payload.issueDescription),
+      },
+    ]),
+    primaryButton('Open ticket', payload.dashboardUrl),
+    quietNote(
+      isIntake
+        ? 'Assign this ticket from the inbox so the right developer can pick it up.'
+        : 'Internal tickets stay inside VSOP — clients are not notified.',
+    ),
+  ].join('');
+
+  return {
+    subject: isIntake
+      ? `[${payload.ticketReferenceId}] New portal report`
+      : `[${payload.ticketReferenceId}] Internal ticket created`,
+    html: renderEmailShell({
+      frontendUrl: ctx.frontendUrl,
+      brand: ctx.brand,
+      title: isIntake ? 'New portal report' : 'Internal ticket created',
       previewText: `${payload.ticketReferenceId} · ${payload.portalName}`,
       bodyHtml: body,
     }),
