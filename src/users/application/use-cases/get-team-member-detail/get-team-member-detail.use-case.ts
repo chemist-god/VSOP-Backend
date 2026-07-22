@@ -104,6 +104,8 @@ export class GetTeamMemberDetailUseCase {
       },
     });
 
+    const contribution = await this.buildContribution(userId);
+
     return {
       member: {
         id: user.id,
@@ -153,6 +155,84 @@ export class GetTeamMemberDetailUseCase {
         ticketReferenceId: note.ticket.referenceId,
         createdAt: note.createdAt,
       })),
+      contribution,
+    };
+  }
+
+  private async buildContribution(userId: string) {
+    const rangeDays = 112; // ~16 weeks — dense enough for support ops
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    const start = new Date(end);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - (rangeDays - 1));
+
+    const [auditRows, noteRows] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where: {
+          actorId: userId,
+          createdAt: { gte: start, lte: end },
+        },
+        select: { createdAt: true },
+      }),
+      this.prisma.ticketNote.findMany({
+        where: {
+          authorId: userId,
+          createdAt: { gte: start, lte: end },
+        },
+        select: { createdAt: true },
+      }),
+    ]);
+
+    const dayKey = (date: Date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    const counts = new Map<string, number>();
+    for (const row of auditRows) {
+      const key = dayKey(row.createdAt);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    for (const row of noteRows) {
+      const key = dayKey(row.createdAt);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    const levelFromCount = (count: number): 0 | 1 | 2 | 3 | 4 => {
+      if (count <= 0) return 0;
+      if (count === 1) return 1;
+      if (count <= 3) return 2;
+      if (count <= 6) return 3;
+      return 4;
+    };
+
+    const days: Array<{ date: string; count: number; level: 0 | 1 | 2 | 3 | 4 }> = [];
+    let total = 0;
+    let activeDays = 0;
+
+    for (let i = 0; i < rangeDays; i += 1) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const date = dayKey(d);
+      const count = counts.get(date) ?? 0;
+      const level = levelFromCount(count);
+      if (count > 0) {
+        total += count;
+        activeDays += 1;
+      }
+      days.push({ date, count, level });
+    }
+
+    return {
+      rangeDays,
+      startDate: dayKey(start),
+      endDate: dayKey(end),
+      total,
+      activeDays,
+      days,
     };
   }
 }
