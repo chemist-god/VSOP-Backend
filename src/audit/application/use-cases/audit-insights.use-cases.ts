@@ -128,6 +128,8 @@ export class GetInsightsUseCase {
       if (bucket) bucket.resolved += 1;
     }
 
+    const team = await this.buildTeamInsights(since, span);
+
     return {
       totals: {
         tickets: total,
@@ -156,6 +158,175 @@ export class GetInsightsUseCase {
         date,
         ...counts,
       })),
+      team,
+    };
+  }
+
+  private async buildTeamInsights(since: Date, span: number) {
+    const openStatuses = ['OPEN', 'IN_PROGRESS'] as const;
+    const nowMs = Date.now();
+
+    const [users, activeAssignments, resolvedAssigned] = await Promise.all([
+      this.prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isActive: true,
+        },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.assignment.findMany({
+        where: { isActive: true },
+        select: {
+          assigneeId: true,
+          dueDate: true,
+          ticket: { select: { status: true } },
+        },
+      }),
+      this.prisma.ticket.findMany({
+        where: {
+          resolvedAt: { gte: since },
+          assignments: { some: {} },
+        },
+        select: {
+          createdAt: true,
+          resolvedAt: true,
+          assignments: { select: { assigneeId: true } },
+        },
+      }),
+    ]);
+
+    type MemberAgg = {
+      openAssigned: number;
+      resolvedInRange: number;
+      overdue: number;
+      mttrTotalMs: number;
+      mttrCount: number;
+    };
+
+    const byUser = new Map<string, MemberAgg>();
+    for (const user of users) {
+      byUser.set(user.id, {
+        openAssigned: 0,
+        resolvedInRange: 0,
+        overdue: 0,
+        mttrTotalMs: 0,
+        mttrCount: 0,
+      });
+    }
+
+    for (const row of activeAssignments) {
+      const agg = byUser.get(row.assigneeId);
+      if (!agg) continue;
+      const isOpenWork = (openStatuses as readonly string[]).includes(row.ticket.status);
+      if (!isOpenWork) continue;
+      agg.openAssigned += 1;
+      if (row.dueDate.getTime() < nowMs) agg.overdue += 1;
+    }
+
+    const dayKey = (date: Date) => date.toISOString().slice(0, 10);
+    const teamTrendMap = new Map<string, number>();
+    for (let i = span; i >= 0; i -= 1) {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      teamTrendMap.set(dayKey(d), 0);
+    }
+
+    let teamMttrTotalMs = 0;
+    let teamMttrCount = 0;
+
+    for (const ticket of resolvedAssigned) {
+      if (!ticket.resolvedAt) continue;
+      const key = dayKey(ticket.resolvedAt);
+      if (teamTrendMap.has(key)) {
+        teamTrendMap.set(key, (teamTrendMap.get(key) ?? 0) + 1);
+      }
+
+      const durationMs = ticket.resolvedAt.getTime() - ticket.createdAt.getTime();
+      if (durationMs >= 0) {
+        teamMttrTotalMs += durationMs;
+        teamMttrCount += 1;
+      }
+
+      const assigneeIds = [...new Set(ticket.assignments.map((a) => a.assigneeId))];
+      for (const assigneeId of assigneeIds) {
+        let agg = byUser.get(assigneeId);
+        if (!agg) {
+          agg = {
+            openAssigned: 0,
+            resolvedInRange: 0,
+            overdue: 0,
+            mttrTotalMs: 0,
+            mttrCount: 0,
+          };
+          byUser.set(assigneeId, agg);
+        }
+        agg.resolvedInRange += 1;
+        if (durationMs >= 0) {
+          agg.mttrTotalMs += durationMs;
+          agg.mttrCount += 1;
+        }
+      }
+    }
+
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    const byMember = [...byUser.entries()]
+      .map(([userId, agg]) => {
+        const user = usersById.get(userId);
+        if (!user) return null;
+        const hasSignal =
+          user.isActive ||
+          agg.openAssigned > 0 ||
+          agg.resolvedInRange > 0 ||
+          agg.overdue > 0;
+        if (!hasSignal) return null;
+        return {
+          userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          openAssigned: agg.openAssigned,
+          resolvedInRange: agg.resolvedInRange,
+          overdue: agg.overdue,
+          mttrHours:
+            agg.mttrCount > 0
+              ? Math.round((agg.mttrTotalMs / agg.mttrCount / 3_600_000) * 10) / 10
+              : null,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null)
+      .sort((a, b) => {
+        if (b.resolvedInRange !== a.resolvedInRange) {
+          return b.resolvedInRange - a.resolvedInRange;
+        }
+        if (b.openAssigned !== a.openAssigned) {
+          return b.openAssigned - a.openAssigned;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+    const openAssigned = byMember.reduce((sum, row) => sum + row.openAssigned, 0);
+    const overdue = byMember.reduce((sum, row) => sum + row.overdue, 0);
+
+    return {
+      kpis: {
+        openAssigned,
+        resolvedInRange: resolvedAssigned.length,
+        overdue,
+        avgMttrHours:
+          teamMttrCount > 0
+            ? Math.round((teamMttrTotalMs / teamMttrCount / 3_600_000) * 10) / 10
+            : null,
+      },
+      trend: [...teamTrendMap.entries()].map(([date, resolved]) => ({
+        date,
+        resolved,
+      })),
+      byMember,
     };
   }
 }
