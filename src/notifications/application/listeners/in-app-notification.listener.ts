@@ -10,6 +10,7 @@ import { ID_GENERATOR_PORT, IdGeneratorPort } from '@shared/application/ports/id
 import { TicketCreatedEvent } from '@tickets/domain/events/ticket-created.event';
 import { TicketAssignedEvent } from '@tickets/domain/events/ticket-assigned.event';
 import { TicketResolvedEvent } from '@tickets/domain/events/ticket-resolved.event';
+import { TicketReadyForReviewEvent } from '@tickets/domain/events/ticket-ready-for-review.event';
 
 @Injectable()
 export class InAppNotificationListener {
@@ -69,6 +70,14 @@ export class InAppNotificationListener {
     return [...ids];
   }
 
+  private async resolveAdminIds(): Promise<string[]> {
+    const admins = await this.prisma.user.findMany({
+      where: { role: UserRole.ADMIN, isActive: true },
+      select: { id: true },
+    });
+    return admins.map((a) => a.id);
+  }
+
   @OnEvent('ticket.assigned')
   async handleTicketAssigned(event: TicketAssignedEvent): Promise<void> {
     try {
@@ -87,6 +96,29 @@ export class InAppNotificationListener {
       ]);
     } catch (err) {
       this.logger.error('Failed to create inbox item for ticket.assigned', err);
+    }
+  }
+
+  @OnEvent('ticket.ready_for_review')
+  async handleTicketReadyForReview(event: TicketReadyForReviewEvent): Promise<void> {
+    try {
+      const adminIds = await this.resolveAdminIds();
+      const recipients = adminIds.filter((id) => id !== event.actorId);
+      if (recipients.length === 0) return;
+
+      const snippet = truncate(event.reviewNote, 120);
+      await this.repo.createMany(
+        recipients.map((userId) => ({
+          id: this.idGen.generate(),
+          userId,
+          type: 'TICKET_READY_FOR_REVIEW' as const,
+          title: `Review ${event.referenceId}`,
+          body: snippet || 'A ticket is ready for admin review.',
+          ticketId: event.ticketId,
+        })),
+      );
+    } catch (err) {
+      this.logger.error('Failed to create inbox items for ticket.ready_for_review', err);
     }
   }
 
