@@ -5,6 +5,7 @@ import { DomainEvent } from '@shared/domain/domain-event.base';
 import { TicketStatusChangedEvent } from '@tickets/domain/events/ticket-status-changed.event';
 import { TicketCreatedEvent } from '@tickets/domain/events/ticket-created.event';
 import { TicketResolvedEvent } from '@tickets/domain/events/ticket-resolved.event';
+import { TicketReadyForReviewEvent } from '@tickets/domain/events/ticket-ready-for-review.event';
 
 @Injectable()
 export class AuditEventListener {
@@ -39,6 +40,23 @@ export class AuditEventListener {
             actorType: 'USER',
             beforeState: { status: event.from },
             afterState: { status: event.to },
+          },
+        });
+      }
+
+      if (event instanceof TicketReadyForReviewEvent) {
+        await this.prisma.auditLog.create({
+          data: {
+            entityType: 'ticket',
+            entityId: event.ticketId,
+            ticketId: event.ticketId,
+            action: 'ticket.ready_for_review',
+            actorId: event.actorId,
+            actorType: 'USER',
+            afterState: {
+              referenceId: event.referenceId,
+              reviewNote: event.reviewNote,
+            },
           },
         });
       }
