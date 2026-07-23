@@ -8,14 +8,44 @@ import {
 import { InvalidTicketTransitionError } from '../errors/invalid-ticket-transition.error';
 import { TicketStatusChangedEvent } from '../events/ticket-status-changed.event';
 import { TicketResolvedEvent } from '../events/ticket-resolved.event';
+import { TicketReadyForReviewEvent } from '../events/ticket-ready-for-review.event';
 import { TicketCreatedEvent } from '../events/ticket-created.event';
 
-/** Board-friendly transitions — Kanban can move cards between columns freely. */
+/**
+ * Board-friendly transitions.
+ * Client-facing close stays on resolve() so email + resolution note stay required.
+ */
 const ALLOWED_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
-  [TicketStatus.OPEN]: [TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED, TicketStatus.CLOSED],
-  [TicketStatus.IN_PROGRESS]: [TicketStatus.OPEN, TicketStatus.RESOLVED, TicketStatus.CLOSED],
-  [TicketStatus.RESOLVED]: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.CLOSED],
-  [TicketStatus.CLOSED]: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED],
+  [TicketStatus.OPEN]: [
+    TicketStatus.IN_PROGRESS,
+    TicketStatus.PENDING_REVIEW,
+    TicketStatus.RESOLVED,
+    TicketStatus.CLOSED,
+  ],
+  [TicketStatus.IN_PROGRESS]: [
+    TicketStatus.OPEN,
+    TicketStatus.PENDING_REVIEW,
+    TicketStatus.RESOLVED,
+    TicketStatus.CLOSED,
+  ],
+  [TicketStatus.PENDING_REVIEW]: [
+    TicketStatus.OPEN,
+    TicketStatus.IN_PROGRESS,
+    TicketStatus.RESOLVED,
+    TicketStatus.CLOSED,
+  ],
+  [TicketStatus.RESOLVED]: [
+    TicketStatus.OPEN,
+    TicketStatus.IN_PROGRESS,
+    TicketStatus.PENDING_REVIEW,
+    TicketStatus.CLOSED,
+  ],
+  [TicketStatus.CLOSED]: [
+    TicketStatus.OPEN,
+    TicketStatus.IN_PROGRESS,
+    TicketStatus.PENDING_REVIEW,
+    TicketStatus.RESOLVED,
+  ],
 };
 
 interface TicketProps {
@@ -110,6 +140,10 @@ export class Ticket extends AggregateRoot<TicketProps> {
   }
 
   changeStatus(newStatus: TicketStatus, actorId: string): void {
+    if (this.props.status === newStatus) {
+      return;
+    }
+
     const allowed = ALLOWED_TRANSITIONS[this.props.status];
     if (!allowed.includes(newStatus)) {
       throw new InvalidTicketTransitionError(this.props.status, newStatus);
@@ -129,16 +163,60 @@ export class Ticket extends AggregateRoot<TicketProps> {
     this.addDomainEvent(new TicketStatusChangedEvent(this.id, actorId, prev, newStatus));
   }
 
+  /**
+   * Developer (or admin) marks work ready for admin review.
+   * Does not email the client — that happens only on resolve().
+   */
+  submitForReview(reviewNote: string, actorId: string): void {
+    if (!reviewNote?.trim()) {
+      throw new Error('A review note is required before submitting for review');
+    }
+
+    if (this.props.status === TicketStatus.PENDING_REVIEW) {
+      this.addDomainEvent(
+        new TicketReadyForReviewEvent(
+          this.id,
+          actorId,
+          this.props.referenceId,
+          this.props.description,
+          reviewNote.trim(),
+        ),
+      );
+      return;
+    }
+
+    this.changeStatus(TicketStatus.PENDING_REVIEW, actorId);
+    this.addDomainEvent(
+      new TicketReadyForReviewEvent(
+        this.id,
+        actorId,
+        this.props.referenceId,
+        this.props.description,
+        reviewNote.trim(),
+      ),
+    );
+  }
+
+  /**
+   * Admin-only path: mark resolved and notify the client.
+   * Idempotent when already RESOLVED — does not re-send email.
+   */
   resolve(
     resolutionNote: string,
     actorId: string,
     clientAdminEmail: string,
     portalName: string,
-  ): void {
+  ): boolean {
     if (!resolutionNote?.trim()) {
       throw new Error('Resolution note is required before marking a ticket as resolved');
     }
-    this.props.resolutionNote = resolutionNote;
+
+    if (this.props.status === TicketStatus.RESOLVED) {
+      this.props.resolutionNote = resolutionNote.trim();
+      return false;
+    }
+
+    this.props.resolutionNote = resolutionNote.trim();
     this.props.clientAdminEmail = clientAdminEmail;
     this.props.portalName = portalName;
     this.changeStatus(TicketStatus.RESOLVED, actorId);
@@ -147,13 +225,14 @@ export class Ticket extends AggregateRoot<TicketProps> {
       new TicketResolvedEvent(
         this.id,
         this.props.portalId ?? null,
-        resolutionNote,
+        resolutionNote.trim(),
         clientAdminEmail,
         this.props.referenceId,
         this.props.description,
         portalName,
       ),
     );
+    return true;
   }
 
   setSeverity(severity: TicketSeverity): void {
