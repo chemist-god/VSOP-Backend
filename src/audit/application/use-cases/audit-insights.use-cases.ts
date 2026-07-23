@@ -136,6 +136,8 @@ export class GetInsightsUseCase {
         resolvedLast7Days: recentResolved,
         open: byStatus.find((row) => row.status === 'OPEN')?._count._all ?? 0,
         inProgress: byStatus.find((row) => row.status === 'IN_PROGRESS')?._count._all ?? 0,
+        pendingReview:
+          byStatus.find((row) => row.status === 'PENDING_REVIEW')?._count._all ?? 0,
         resolved: byStatus.find((row) => row.status === 'RESOLVED')?._count._all ?? 0,
         closed: byStatus.find((row) => row.status === 'CLOSED')?._count._all ?? 0,
       },
@@ -163,7 +165,7 @@ export class GetInsightsUseCase {
   }
 
   private async buildTeamInsights(since: Date, span: number) {
-    const openStatuses = ['OPEN', 'IN_PROGRESS'] as const;
+    const openStatuses = ['OPEN', 'IN_PROGRESS', 'PENDING_REVIEW'] as const;
     const nowMs = Date.now();
 
     const [users, activeAssignments, resolvedAssigned] = await Promise.all([
