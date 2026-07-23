@@ -22,7 +22,7 @@ export class ResolveTicketUseCase {
     @Inject(TICKET_REPOSITORY_PORT) private readonly ticketRepo: TicketRepositoryPort,
     @Inject(PORTAL_REPOSITORY_PORT) private readonly portalRepo: PortalRepositoryPort,
     @Inject(DOMAIN_EVENT_PUBLISHER_PORT) private readonly eventPublisher: DomainEventPublisherPort,
-  ) {}
+  ) { }
 
   async execute(command: ResolveTicketCommand): Promise<ResolveTicketResult> {
     const ticket = await this.ticketRepo.findById(command.ticketId);
