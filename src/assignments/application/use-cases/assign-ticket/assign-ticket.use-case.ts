@@ -45,7 +45,10 @@ export class AssignTicketUseCase {
       isActive: true,
     });
 
-    if (ticket.status === TicketStatus.OPEN) {
+    if (
+      ticket.status === TicketStatus.OPEN ||
+      ticket.status === TicketStatus.PENDING_REVIEW
+    ) {
       ticket.changeStatus(TicketStatus.IN_PROGRESS, input.assignedBy);
       await this.ticketRepo.save(ticket);
       this.eventPublisher.publishAll(ticket.domainEvents);
