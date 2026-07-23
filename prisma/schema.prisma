@@ -21,6 +21,7 @@ enum PortalStatus {
 enum TicketStatus {
   OPEN
   IN_PROGRESS
+  PENDING_REVIEW
   RESOLVED
   CLOSED
 }
@@ -69,6 +70,7 @@ enum InAppNotificationType {
   TICKET_CREATED
   TICKET_ASSIGNED
   TICKET_RESOLVED
+  TICKET_READY_FOR_REVIEW
 }
 
 enum ActorType {
