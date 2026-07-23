@@ -16,7 +16,7 @@ export type InAppNotificationRecord = {
 export type CreateInAppNotificationInput = {
   id: string;
   userId: string;
-  type: 'TICKET_CREATED' | 'TICKET_ASSIGNED' | 'TICKET_RESOLVED';
+  type: 'TICKET_CREATED' | 'TICKET_ASSIGNED' | 'TICKET_RESOLVED' | 'TICKET_READY_FOR_REVIEW';
   title: string;
   body: string;
   ticketId?: string | null;
