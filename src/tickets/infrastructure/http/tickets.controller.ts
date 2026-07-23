@@ -11,12 +11,16 @@ import { SetTicketSeverityUseCase } from '@tickets/application/use-cases/set-tic
 import { AddTicketNoteUseCase } from '@tickets/application/use-cases/add-ticket-note/add-ticket-note.use-case';
 import { ResolveTicketUseCase } from '@tickets/application/use-cases/resolve-ticket/resolve-ticket.use-case';
 import { ResolveTicketCommand } from '@tickets/application/use-cases/resolve-ticket/resolve-ticket.command';
+import { SubmitTicketForReviewUseCase } from '@tickets/application/use-cases/submit-ticket-for-review/submit-ticket-for-review.use-case';
+import { SubmitTicketForReviewCommand } from '@tickets/application/use-cases/submit-ticket-for-review/submit-ticket-for-review.command';
 import { CreateTicketUseCase } from '@tickets/application/use-cases/create-ticket/create-ticket.use-case';
 import { CreateTicketCommand } from '@tickets/application/use-cases/create-ticket/create-ticket.command';
 import { CreateTicketDto } from '@tickets/infrastructure/http/dto/create-ticket.dto';
 import { AssignTicketUseCase } from '@assignments/application/use-cases/assign-ticket/assign-ticket.use-case';
 import { STORAGE_PORT, StoragePort } from '@storage/application/ports/storage.port';
 import { PORTAL_REPOSITORY_PORT, PortalRepositoryPort } from '@portals/application/ports/portal-repository.port';
+
+type AuthUser = { id: string; role: UserRole };
 
 @ApiTags('Tickets')
 @ApiBearerAuth()
@@ -30,6 +34,7 @@ export class TicketsController {
     private readonly setSeverity: SetTicketSeverityUseCase,
     private readonly addNote: AddTicketNoteUseCase,
     private readonly resolveTicket: ResolveTicketUseCase,
+    private readonly submitForReview: SubmitTicketForReviewUseCase,
     private readonly assignTicket: AssignTicketUseCase,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(PORTAL_REPOSITORY_PORT) private readonly portalRepo: PortalRepositoryPort,
@@ -60,7 +65,7 @@ export class TicketsController {
   async create(
     @Body() body: CreateTicketDto,
     @UploadedFiles() files: Array<Express.Multer.File>,
-    @Req() req: { user: { id: string } },
+    @Req() req: { user: AuthUser },
   ) {
     let uploadSlug = 'internal';
     if (body.portalId) {
@@ -91,13 +96,13 @@ export class TicketsController {
   }
 
   @Patch(':id/status')
-  @ApiOperation({ summary: 'Update ticket status' })
+  @ApiOperation({ summary: 'Update ticket status (role-aware)' })
   updateStatus(
     @Param('id') id: string,
     @Body() body: { status: TicketStatus },
-    @Req() req: { user: { id: string } },
+    @Req() req: { user: AuthUser },
   ) {
-    return this.changeStatus.execute(id, body.status, req.user.id);
+    return this.changeStatus.execute(id, body.status, req.user.id, req.user.role);
   }
 
   @Patch(':id/severity')
@@ -112,7 +117,7 @@ export class TicketsController {
   createNote(
     @Param('id') id: string,
     @Body() body: { content: string },
-    @Req() req: { user: { id: string } },
+    @Req() req: { user: AuthUser },
   ) {
     return this.addNote.execute(id, req.user.id, body.content);
   }
@@ -123,7 +128,7 @@ export class TicketsController {
   assign(
     @Param('id') id: string,
     @Body() body: { assigneeId: string; dueDate: string },
-    @Req() req: { user: { id: string } },
+    @Req() req: { user: AuthUser },
   ) {
     return this.assignTicket.execute({
       ticketId: id,
@@ -133,12 +138,30 @@ export class TicketsController {
     });
   }
 
+  @Post(':id/submit-for-review')
+  @ApiOperation({ summary: 'Submit ticket for admin review (developer or admin)' })
+  submitReview(
+    @Param('id') id: string,
+    @Body() body: { reviewNote: string },
+    @Req() req: { user: AuthUser },
+  ) {
+    return this.submitForReview.execute(
+      new SubmitTicketForReviewCommand(
+        id,
+        body.reviewNote,
+        req.user.id,
+        req.user.role,
+      ),
+    );
+  }
+
   @Post(':id/resolve')
-  @ApiOperation({ summary: 'Resolve ticket with resolution note' })
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Resolve ticket with resolution note and email client (admin)' })
   resolve(
     @Param('id') id: string,
     @Body() body: { resolutionNote: string },
-    @Req() req: { user: { id: string } },
+    @Req() req: { user: AuthUser },
   ) {
     return this.resolveTicket.execute(
       new ResolveTicketCommand(id, body.resolutionNote, req.user.id),
