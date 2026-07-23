@@ -4,6 +4,7 @@ import { PrismaTicketRepository } from './infrastructure/persistence/prisma-tick
 import { SubmitTicketUseCase } from './application/use-cases/submit-ticket/submit-ticket.use-case';
 import { CreateTicketUseCase } from './application/use-cases/create-ticket/create-ticket.use-case';
 import { ResolveTicketUseCase } from './application/use-cases/resolve-ticket/resolve-ticket.use-case';
+import { SubmitTicketForReviewUseCase } from './application/use-cases/submit-ticket-for-review/submit-ticket-for-review.use-case';
 import { ListTicketsUseCase } from './application/use-cases/list-tickets/list-tickets.use-case';
 import { ChangeTicketStatusUseCase } from './application/use-cases/change-ticket-status/change-ticket-status.use-case';
 import { SetTicketSeverityUseCase } from './application/use-cases/set-ticket-severity/set-ticket-severity.use-case';
@@ -22,6 +23,7 @@ import { StorageModule } from '@storage/storage.module';
     SubmitTicketUseCase,
     CreateTicketUseCase,
     ResolveTicketUseCase,
+    SubmitTicketForReviewUseCase,
     ListTicketsUseCase,
     ChangeTicketStatusUseCase,
     SetTicketSeverityUseCase,
