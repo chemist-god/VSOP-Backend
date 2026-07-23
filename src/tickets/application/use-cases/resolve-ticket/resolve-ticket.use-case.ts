@@ -12,6 +12,8 @@ export type ResolveTicketResult = {
   resolutionNote: string;
   resolvedAt: string | null;
   alreadyResolved: boolean;
+  /** True when a portal client email was available and resolution mail will be sent. */
+  clientNotified: boolean;
 };
 
 @Injectable()
@@ -29,8 +31,9 @@ export class ResolveTicketUseCase {
     const portal = ticket.portalId
       ? await this.portalRepo.findById(ticket.portalId)
       : null;
-    const clientEmail = portal?.clientAdminEmail ?? '';
+    const clientEmail = portal?.clientAdminEmail?.trim() ?? '';
     const portalName = portal?.companyName ?? 'Internal';
+    const clientNotified = Boolean(clientEmail);
 
     const didResolve = ticket.resolve(
       command.resolutionNote,
@@ -53,6 +56,7 @@ export class ResolveTicketUseCase {
       resolutionNote: ticket.resolutionNote ?? command.resolutionNote.trim(),
       resolvedAt: ticket.resolvedAt?.toISOString() ?? null,
       alreadyResolved: !didResolve,
+      clientNotified: didResolve ? clientNotified : false,
     };
   }
 }
